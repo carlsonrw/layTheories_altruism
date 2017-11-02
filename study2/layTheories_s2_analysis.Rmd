@@ -1,0 +1,289 @@
+---
+title: "lay theories - study 2"
+output:
+  html_document: default
+  pdf_document: default
+---
+```{r install/load packages,echo=FALSE,include=FALSE}
+
+library("tidyverse") 
+library("psych") 
+library("lsr") 
+
+```
+
+```{r read in raw data set}
+
+setwd('~/Box Sync/layTheories_altruism/study2')
+df = read.csv('layTheories_s2_raw.csv') #raw data frame - temporary
+data = df[,c("id","condition")] # clean data frame - for analysis
+
+```
+
+```{r create clean data frame for analysis}
+
+#create averages for perception ratings 
+
+  #AVG: altruism ratings
+    alt = df[,grep("Alt", names(df))] #get all altruism ratings 
+    #DF should contain ncol = 240. Or N = 3 (DVs per V) x 8 (Vs) x 4 (orders) x 2 (cond: motive/outcome) + 3 (DVs per V) x 8 (Vs) x 2 (cond: control/neutral)
+      ncol(alt) #sanity check
+    alt = alt %>% mutate(alt_avg=rowMeans(alt, na.rm = TRUE)) #create new column averaging across them
+    data$perceived_alt = alt$alt_avg
+    sanity_check_alt = describe(alt)  
+  
+    #AVGS FOR ALL GROUPS BY MOTIVE, PERSON, ACTION (ncol = 80)
+    
+      #AVG: altruism ratings - motive
+      mtvdata = alt[,grep("m_", names(alt))] #get alt ratings of motives
+        ncol(mtvdata) #sanity check
+      mtvdata = mtvdata %>% mutate(actCN_avg_m_alt=rowMeans(mtvdata, na.rm = TRUE)) #create new column averaging across them
+      data$actCN_avg_m_alt = mtvdata$actCN_avg_m_alt #write to main df
+  
+      #AVG: altruism ratings - person
+      psndata = alt[,grep("p_", names(alt))] #get alt ratings of persons
+        ncol(psndata) #sanity check
+      psndata = psndata %>% mutate(actCN_avg_p_alt=rowMeans(psndata, na.rm = TRUE)) #create new column averaging across them
+      data$actCN_avg_p_alt = psndata$actCN_avg_p_alt #write to main df
+    
+      #AVG: altruism ratings - action
+      actdata = alt[,grep("a_", names(alt))] #get alt ratings of actions
+      ncol(actdata) #sanity check
+      actdata = actdata %>% mutate(actCN_avg_a_alt=rowMeans(actdata, na.rm = TRUE)) #create new column averaging across them
+      data$actCN_avg_a_alt = actdata$actCN_avg_a_alt #write to main df
+
+    rm("mtvdata", "psndata", "actdata") #clean up workspace
+  
+    #AVGS FOR MOTIVES/OUTCOME GROUPS ONLY (ncol = 48)
+    
+      #AVG: altruism ratings - material 
+      mdata = alt[,grep("_m", names(alt))] #get alt ratings of material motives/outcomes
+      mdata = mdata[, -grep("actC", colnames(mdata))] #remove motive ratings from control group, which are picked via '_m'
+          mdata = mdata[, -grep("actN", colnames(mdata))] #remove motive ratings from neutral group, which are picked via '_m'
+          
+        ncol(mdata)  #sanity check
+      mdata = mdata %>% mutate(actMO_avg_m_alt=rowMeans(mdata, na.rm = TRUE)) #create new column averaging across them
+      data$actMO_avg_m_alt = mdata$actMO_avg_m_alt #write to main df
+    
+      #AVG: altruism ratings - social
+      sdata = alt[,grep("_s", names(alt))] #get alt ratings of social motives/outcomes
+        ncol(sdata) #sanity check
+      sdata = sdata %>% mutate(actMO_avg_s_alt=rowMeans(sdata, na.rm = TRUE)) #create new column averaging across them
+      data$actMO_avg_s_alt = sdata$actMO_avg_s_alt #write to main df
+    
+      #AVG: altruism ratings - emotional
+      edata = alt[,grep("_e", names(alt))] #get alt ratings of emotional motives/outcomes
+        ncol(edata) #sanity check
+      edata = edata %>% mutate(actMO_avg_e_alt=rowMeans(edata, na.rm = TRUE)) #create new column averaging across them
+      data$actMO_avg_e_alt = edata$actMO_avg_e_alt #write to main df
+    
+      #AVG: altruism ratings - other-oriented
+      odata = alt[,grep("_o", names(alt))] #get alt ratings of other-oriented motives/outcomes
+        ncol(odata) #sanity check
+      odata = odata %>% mutate(actMO_avg_o_alt=rowMeans(odata, na.rm = TRUE)) #create new column averaging across them
+      data$actMO_avg_o_alt = odata$actMO_avg_o_alt #write to main df
+    
+    rm("mdata", "sdata", "edata", "odata", "alt") #clean up workspace
+
+```
+
+```{r exclusions}
+
+#create average reading time to exclude those who did not read the prosocial scenarios
+  rt = df[,grep("rt", names(df))] #get variables containing time
+    ncol(rt) #should be 80. 8 (DVs per 2) x 2 (Cond: Control + Neutral) + (8 (Vs) x 4 (orders) x 2 (cond: motive/outcome))
+  rt = rt %>% mutate(rt_avg=rowMeans(rt, na.rm = TRUE)) #create new column called 'avg' averaging across them
+  data$rt = rt$rt_avg
+  rm("rt")
+  
+  threshold = 1.5  # minimum RT required to read vignettes
+  removedRT = subset(data, rt < threshold)  # Ps removed for falling below minimum RT based on average RT reading the eight vignettes
+  data = subset(data, rt >= threshold)  # new dataset, with people below minimum RT removed
+
+  plyr::count(data$condition) # participants per condition
+  # 1 = control
+  # 2 = motive
+  # 3 = outcome
+  # 4 = neutral
+
+```
+
+```{r data reduction & validation}
+
+#internal validity
+  validity = data[c("actCN_avg_a_alt","actCN_avg_m_alt","actCN_avg_p_alt")]	
+  alpha(validity, keys=c(1,2,3),
+        cumulative=FALSE, 
+        title=NULL, max=10,na.rm = FALSE,
+        check.keys=TRUE,n.iter=1,delete=TRUE)
+
+#correlation between for ratings of altruism for agent's action, agent's motive, and the agent.
+  data_reduce_alt = validity[c(1,2,3)]
+  reduce_corr_alt = cor(data_reduce_alt)
+  round(reduce_corr_alt, 2)
+
+#compute average perceived altruism for each benefit-type
+  data$alt_comp_e = data$actMO_avg_e_alt 
+  data$alt_comp_m = data$actMO_avg_m_alt 
+  data$alt_comp_o = data$actMO_avg_o_alt 
+  data$alt_comp_s = data$actMO_avg_s_alt 
+
+#compute average perceived altruism collapsing across all ratings
+  data$alt_comp = data$perceived_alt
+
+```
+
+```{r descriptive & inferential statistics}
+
+#MIXED ANOVA:
+
+#we ran a 4 (benefit type: material, social, emotional, & other-oriented) x 2 (framing: motive vs. consequence) mixed ANOVA in SPSS
+#this can found in the 'spss' folder, or to generate the spss csv from scatch, use the code below:
+
+#write.csv(data, file = "layTheories_s2_spss.csv") # exported data for SPSS
+#remove "NAs" and redundant first row before importing to SPSS
+#see files in data folder for syntax and output for SPSS 
+
+
+#subset data (only CONSEQUENCE group)
+data_outcome = subset(data, condition == "3",select = c("alt_comp_m","alt_comp_s","alt_comp_e","alt_comp_o")) 
+
+  #descriptive statistics
+  describe(data_outcome)
+
+  #paired samples t-test comparing other-oriented to material
+  t.test(data_outcome$alt_comp_o,data_outcome$alt_comp_m, paired=TRUE) 
+  cohensD(data_outcome$alt_comp_o,data_outcome$alt_comp_m) 
+
+  #paired samples t-test comparing other-oriented to social
+  t.test(data_outcome$alt_comp_o,data_outcome$alt_comp_s, paired=TRUE) 
+  cohensD(data_outcome$alt_comp_o,data_outcome$alt_comp_s) 
+
+  #paired samples t-test comparing other-oriented to emotional
+  t.test(data_outcome$alt_comp_o,data_outcome$alt_comp_e, paired=TRUE) 
+  cohensD(data_outcome$alt_comp_o,data_outcome$alt_comp_e) 
+
+  
+#subset data (only MOTIVE group)
+data_motive = subset(data, condition == "2",select = c("alt_comp_m","alt_comp_s","alt_comp_e","alt_comp_o")) 
+
+  #descriptives
+  describe(data_motive)
+
+  #paired samples t-test comparing other-oriented to material
+  t.test(data_motive$alt_comp_o,data_motive$alt_comp_m, paired=TRUE) 
+  cohensD(data_motive$alt_comp_o,data_motive$alt_comp_m) 
+
+  #paired samples t-test comparing other-oriented to social
+  t.test(data_motive$alt_comp_o,data_motive$alt_comp_s, paired=TRUE) 
+  cohensD(data_motive$alt_comp_o,data_motive$alt_comp_s) 
+
+  #paired samples t-test comparing other-oriented to emotional
+  t.test(data_motive$alt_comp_o,data_motive$alt_comp_e, paired=TRUE) 
+  cohensD(data_motive$alt_comp_o,data_motive$alt_comp_e) 
+
+  #one sample t-tests comparing social and material motives to the mid-point of the scale
+  t.test(data_motive$alt_comp_m,mu=0) 
+  t.test(data_motive$alt_comp_s,mu=0) 
+
+
+  
+#subset data (only NEUTRAL group)
+data_neutral = subset(data, condition == "4", select = c("alt_comp")) 
+
+  #descriptive statistics
+  n = describe(data_neutral)
+  n
+  
+  #comparing neutral actions to good deeds motivated by material and social benefits
+  data_mtv_m = subset(data, condition == "2", select = c("alt_comp","alt_comp_m")) 
+  data_mtv_s = subset(data, condition == "2", select = c("alt_comp","alt_comp_s")) 
+
+  t.test(data_mtv_m$alt_comp_m,data_neutral$alt_comp)
+  t.test(data_mtv_s$alt_comp_s,data_neutral$alt_comp)
+  
+  
+#subset data (only CONTROL group)
+data_control = subset(data, condition == "1", select = c("alt_comp")) 
+
+  #descriptive statistics
+  c = describe(data_control)
+  c
+  
+  #one sample t-test comparing perceived altruism in control group to the mid-point of the scale
+  t.test(data_control$alt_comp,mu=0) 
+
+  
+```
+
+```{r plot main results: consequence group}
+  
+#PLOT: perceived altruism: consequence group
+
+  names(data_outcome) <- c("material","social","emotional","other-oriented")
+  data_outcome_long <- gather(data_outcome, consequence, perceived.altruism, "material":"other-oriented", factor_key=TRUE)
+      
+s2_f1 = ggplot(data_outcome_long,aes(consequence,perceived.altruism,fill=consequence))+
+    stat_summary(geom = "bar",fun.y = "mean",width=.7,alpha=.8)+
+    stat_summary(geom = "errorbar",width=.1,color="black",fun.data = "mean_cl_boot")+theme_classic()+
+    expand_limits(y=c(-2,4.5))+
+    ylab("perceived altruism")+
+    geom_hline(aes(yintercept= c$mean, linetype = "control"), colour= 'black') +
+    geom_hline(aes(yintercept= 0), colour= 'grey',alpha=.5) +
+    geom_hline(aes(yintercept= n$mean, linetype = "neutral"))+
+    scale_linetype_manual(name = "reference", values = c(2, 3))+
+    guides(fill = guide_legend(order = 1),color = guide_legend(order = 1))+
+    theme(axis.line.y = element_line(color="grey"),
+      axis.ticks.y=element_line(color="grey"),
+      axis.line.x=element_blank(),
+      axis.title.x=element_blank(),
+      axis.text.x=element_blank(),
+      axis.ticks.x=element_blank())+theme(aspect.ratio=4/3.5)+
+    scale_fill_manual("consequence", values = 
+                        c("material" = "mediumseagreen", 
+                          "social" = "cornflowerblue", 
+                          "emotional" = "orange",
+                          "other-oriented" = "white"))+
+    stat_summary(geom = "bar",fun.y = "mean",width=.7,alpha=0, size=.4, color="black")
+
+s2_f1 
+    #ggsave(s2_f1,file='~/s2_f1.pdf')
+    
+```
+
+```{r plot main results: motive group}
+
+#PLOT: perceived altruism: motive group
+
+  names(data_motive) <- c("material","social","emotional","other-oriented")
+  data_motive_long <- gather(data_motive, motive, perceived.altruism, "material":"other-oriented",factor_key = TRUE)
+
+s2_f2 = ggplot(data_motive_long,aes(motive,perceived.altruism,fill=motive))+
+    stat_summary(geom = "bar",fun.y = "mean",width=.7,alpha=.8)+
+    stat_summary(geom = "errorbar",width=.1,color="black",fun.data = "mean_cl_boot")+theme_classic()+
+    expand_limits(y=c(-2,4.5))+
+    ylab("perceived altruism")+
+    geom_hline(aes(yintercept= c$mean, linetype = "control"), colour= 'black') +
+    geom_hline(aes(yintercept= 0), colour= 'grey',alpha=.5) +
+    geom_hline(aes(yintercept= n$mean, linetype = "neutral"))+
+    scale_linetype_manual(name = "reference", values = c(2, 3))+
+    guides(fill = guide_legend(order = 1),color = guide_legend(order = 1))+
+    theme(axis.line.y = element_line(color="grey"),
+      axis.ticks.y=element_line(color="grey"),
+      axis.line.x=element_blank(),
+      axis.title.x=element_blank(),
+      axis.text.x=element_blank(),
+      axis.ticks.x=element_blank())+theme(aspect.ratio=4/3.5)+
+    scale_fill_manual("motive", values = 
+                        c("material" = "mediumseagreen", 
+                          "social" = "cornflowerblue", 
+                          "emotional" = "orange",
+                          "other-oriented" = "white"))+
+    stat_summary(geom = "bar",fun.y = "mean",width=.7,alpha=0, size=.4, color="black")
+
+s2_f2 
+    #ggsave(s2_f2,file='~/s2_f2.pdf')
+
+```
+
+
