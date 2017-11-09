@@ -12,7 +12,7 @@ The main analysis scripts for Studies 1 and 2 are R Markdown files that can be d
   - [Study 2](study2/layTheories_s2_analysis.Rmd)
 
 ### Additional code
-As noted in our main analysis scripts, the repeated measures ANOVAs reported in each study were run using SPSS. Data and syntax to run these analyses (or any analyses of interest!) can be downloaded here:
+As noted in our main analysis scripts, the Mixed ANOVAs reported in each study were run using SPSS. Data and syntax to run these analyses (or any analyses of interest!) can be downloaded here:
 
 SPSS data
   - [Study 1](/study1/spss/layTheories_s1_spss.csv)
